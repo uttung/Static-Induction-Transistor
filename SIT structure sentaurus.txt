@@ -1,0 +1,104 @@
+;----- (1). parameter -----;
+
+(define Lg @Lg@) ;set Lg as variables Lg = 200, 400, 600, 800, 1000 nm
+(define nm 1) 
+
+;----- (2). Structure -----;
+(sdegeo:set-default-boolean "ABA")
+"ABA" ;;;;;NEW REPLACES OLD
+
+;--- Channel ---
+(sdegeo:create-rectangle (position -5.5 0 0)  (position 5.5 7 0) "Ga2O3" "region_channel")
+
+;--- DRAIN ---
+(sdegeo:create-rectangle (position -5.5 7 0)  (position 5.5 8 0) "Ga2O3" "region_drrain")
+
+;--- GATE_1 ---
+(sdegeo:create-rectangle (position -5.5 0 0)  (position -2 2 0) "Silicon" "region_gate_1")
+
+;--- GATE_2 ---
+(sdegeo:create-rectangle (position 2 0 0)  (position 5.5 2 0) "Silicon" "region_gate_2")
+
+;--- SOURCE ---
+(sdegeo:create-rectangle (position -1 0 0)  (position 1 0.4 0) "Ga2O3" "region_source")
+
+; ----- (3). Contact -----; 
+
+;----- Gate1 -----
+(sdegeo:define-contact-set "gate_1" 4  (color:rgb 1 0 0 ) "##")
+(sdegeo:define-2d-contact (list (car (find-edge-id (position 3.75 0 0)))) "gate_1")
+
+;----- Gate2 -----
+(sdegeo:define-contact-set "gate_2" 4  (color:rgb 1 0 0 ) "##")
+(sdegeo:define-2d-contact (list (car (find-edge-id (position -3.75 0 0)))) "gate_2")
+
+;----- Drain -----
+(sdegeo:define-contact-set "drain" 4  (color:rgb 1 0 1 ) "##")
+(sdegeo:define-2d-contact (list (car (find-edge-id (position 0.0 8 0)))) "drain")
+
+;----- Source -----
+(sdegeo:define-contact-set "source" 4  (color:rgb 1 1 0 ) "##")
+(sdegeo:define-2d-contact (list (car (find-edge-id (position 0 0 0)))) "source")
+
+
+(render:rebuild)
+
+;----- (4). Doping -----;
+ 
+;--- Gate1 ---
+(sdedr:define-constant-profile "ConstantProfileDefinition_gate_1" "BoronActiveConcentration" 5*10^(15))
+(sdedr:define-constant-profile-region "ConstantProfilePlacement_gate_1" "ConstantProfileDefinition_gate_1" "region_gate_1")
+
+;--- Gate2 ---
+(sdedr:define-constant-profile "ConstantProfileDefinition_gate_2" "BoronActiveConcentration" 5*10^(15))
+(sdedr:define-constant-profile-region "ConstantProfilePlacement_gate_2" "ConstantProfileDefinition_gate_2" "region_gate_2")
+
+;----- Drain -----
+(sdedr:define-constant-profile "ConstantProfileDefinition_drain" "PhosphorusActiveConcentration" 5*10^(15))
+(sdedr:define-constant-profile-region "ConstantProfilePlacement_drain" "ConstantProfileDefinition_drain" "region_drain")
+
+;----- Source -----
+(sdedr:define-constant-profile "ConstantProfileDefinition_source" "PhosphorusActiveConcentration" 5*10^(15))
+(sdedr:define-constant-profile-region "ConstantProfilePlacement_source" "ConstantProfileDefinition_source" "region_source")
+
+;--- Channel ---
+(sdedr:define-constant-profile "ConstantProfileDefinition_channel" "PhosphorusActiveConcentration" 5*10^(12))
+(sdedr:define-constant-profile-region "ConstantProfilePlacement_channel" "ConstantProfileDefinition_source" "region_channel")
+
+;----- (5). Mesh -----; 
+
+;--- Silicon ---
+(sdedr:define-refinement-size "RefinementDefinition_silicon" 0.1 0.05 0 0.1 0.05 0 )
+(sdedr:define-refinement-placement "RefinementPlacement_silicon" "RefinementDefinition_silicon" (list "material" "Silicon" ) )
+(sdedr:define-refinement-function "RefinementDefinition_silicon" "BoronActiveConcentration" "MaxTransDiff" 1)
+;--- Ga2O3 ---
+(sdedr:define-refinement-size "RefinementDefinition_ga2o3" 0.01 0.05 0 0.01 0.05 0 )
+(sdedr:define-refinement-placement "RefinementPlacement_ga2o3" "RefinementDefinition_ga2o3" (list "material" "Ga2O3" ) )
+(sdedr:define-refinement-function "RefinementDefinition_ga2o3" "PhosphorusActiveConcentration" "MaxTransDiff" 1)
+
+;----- (6). Save (BND and CMD) -----; 
+
+(sde:assign-material-and-region-names (get-body-list) )
+(sdeio:save-tdr-bnd (get-body-list) "n@node@_nm.tdr")
+
+
+(sdedr:write-scaled-cmd-file "n@node@_msh.cmd" nm) 
+(define sde:scale-tdr-bnd 
+(lambda (tdrin sf tdrout) 
+(sde:clear)
+(sdegeo:set-default-boolean "XX") 
+(sdeio:read-tdr-bnd tdrin) 
+(entity:scale (get-body-list) sf) 
+(sdeio:save-tdr-bnd (get-body-list) tdrout)
+) 
+ ) 
+(sde:scale-tdr-bnd "n@node@_nm.tdr" nm "n@node@_bnd.tdr") 
+;-------------------------------------------- END ---------------------------------------;
+
+
+
+
+
+
+
+

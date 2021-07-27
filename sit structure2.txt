@@ -1,0 +1,103 @@
+;----- (1). parameter -----;
+(define Lg @Lg@) ;set Lg as variables Lg = 200, 400, 600, 800, 1000 nm
+(define Lgtg @Lgtg)
+(define nm 1) 
+
+;----- (2). Structure -----;
+(sdegeo:set-default-boolean "ABA")
+"ABA" ;;;;;NEW REPLACES OLD
+
+;--- Channel ---
+(sdegeo:create-rectangle (position 0 0 0)  (position 7.2 5 0) "Ga2O3" "region_channel")
+
+;--- temp regions ---
+(sdegeo:create-rectangle (position 0 0 0)  (position 2 2 0) "Silicon" "region_temp1")
+
+(sdegeo:create-rectangle (position 5.2 0 0)  (position 7.2 2 0) "Silicon" "region_temp2")
+
+;--- Delete regions ---
+(sdegeo:delete-region (list (car (find-body-id (position 1 1 0)))))
+
+(sdegeo:delete-region (list (car (find-body-id (position 6.2 1 0)))))
+
+;--- Substrate ---
+(sdegeo:create-rectangle (position 0 5 0)  (position 7.2 6 0) "Ga2O3" "region_substrate")
+
+;--- Source ---
+(sdegeo:create-rectangle (position 2 -0.4 0)  (position 5.2 0 0) "Ga2O3" "region_source")
+
+
+; ----- (3). Contact -----; 
+
+;----- Gate -----
+
+(sdegeo:define-contact-set "gate" 4  (color:rgb 1 0 0 ) "##")
+
+(sdegeo:define-2d-contact (list (car (find-edge-id (position 1 2 0)))) "gate")
+
+(sdegeo:define-2d-contact (list (car (find-edge-id (position 2 1 0)))) "gate")
+
+(sdegeo:define-2d-contact (list (car (find-edge-id (position 5.2 1 0)))) "gate")
+
+(sdegeo:define-2d-contact (list (car (find-edge-id (position 6.2 2 0)))) "gate")
+
+;----- Drain -----
+
+(sdegeo:define-contact-set "drain" 4  (color:rgb 1 0 1 ) "##")
+
+(sdegeo:define-2d-contact (list (car (find-edge-id (position 3.6 6 0)))) "drain")
+
+
+;----- Source -----
+
+(sdegeo:define-contact-set "source" 4  (color:rgb 1 1 0 ) "##")
+
+(sdegeo:define-2d-contact (list (car (find-edge-id (position 3.6 -0.4 0)))) "source")
+
+(render:rebuild)
+
+;----- (4). Doping -----;
+
+;----- Drain -----
+(sdedr:define-constant-profile "ConstantProfileDefinition_drain" "PhosphorusActiveConcentration" 5*10^(15))
+(sdedr:define-constant-profile-region "ConstantProfilePlacement_drain" "ConstantProfileDefinition_drain" "region_drain")
+
+;----- Source -----
+(sdedr:define-constant-profile "ConstantProfileDefinition_source" "PhosphorusActiveConcentration" 5*10^(15))
+(sdedr:define-constant-profile-region "ConstantProfilePlacement_source" "ConstantProfileDefinition_source" "region_source")
+
+;--- Channel ---
+(sdedr:define-constant-profile "ConstantProfileDefinition_channel" "PhosphorusActiveConcentration" 5*10^(12))
+(sdedr:define-constant-profile-region "ConstantProfilePlacement_channel" "ConstantProfileDefinition_source" "region_channel")
+
+;----- (5). Mesh -----; 
+
+;--- Ga2O3 ---
+(sdedr:define-refinement-size "RefinementDefinition_ga2o3" 0.01 0.05 0 0.01 0.05 0 )
+(sdedr:define-refinement-placement "RefinementPlacement_ga2o3" "RefinementDefinition_ga2o3" (list "material" "Ga2O3" ) )
+(sdedr:define-refinement-function "RefinementDefinition_ga2o3" "PhosphorusActiveConcentration" "MaxTransDiff" 1)
+
+
+
+;----- (6). Save (BND and CMD) -----; 
+
+(sde:assign-material-and-region-names (get-body-list) )
+(sdeio:save-tdr-bnd (get-body-list) "n@node@_nm.tdr")
+
+(sdedr:write-scaled-cmd-file "n@node@_msh.cmd" nm) 
+(define sde:scale-tdr-bnd 
+(lambda (tdrin sf tdrout) 
+(sde:clear)
+(sdegeo:set-default-boolean "XX") 
+(sdeio:read-tdr-bnd tdrin) 
+(entity:scale (get-body-list) sf) 
+(sdeio:save-tdr-bnd (get-body-list) tdrout)
+) 
+ ) 
+(sde:scale-tdr-bnd "n@node@_nm.tdr" nm "n@node@_bnd.tdr") 
+;-------------------------------------------- END ---------------------------------------;
+
+
+
+
+
